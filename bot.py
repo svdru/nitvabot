@@ -1,3 +1,4 @@
+QuitMiner
 # -*- coding: utf-8 -*-
 
 # Bots logic
@@ -50,6 +51,9 @@ def main():
     # Register commands handler
     dp.add_handler(CommandHandler("start", onStart))
     dp.add_handler(CommandHandler("next", onNext))
+    dp.add_handler(CommandHandler("help", onHelp))
+    dp.add_handler(CommandHandler("r", RestartMiner, pass_args=True))
+    dp.add_handler(CommandHandler("q", QuitMiner, pass_args=True))
     # Register callback handler for buttons
     dp.add_handler(CallbackQueryHandler(onButtonClick))
 
@@ -78,6 +82,56 @@ def onStart(bot, update):
 
     # Hello
     update.message.reply_text(START_COMMAND_MESSAGE)
+
+# restart miner
+def RestartMiner(bot, update, args):
+    # Filter users
+    if not isValidUser(update):
+        return
+
+    try:
+        # args[i] should contain the numbers of miners
+        for num in args:
+            num = int(num)
+            if (num < 1) or (num > 21):
+                update.message.reply_text('Invalid number. Need from 1 to 21!')
+                return
+            # Restart miner
+            res = s9api.restartMiner(num)
+            # Show result
+            update.message.reply_text(res)
+
+    except (IndexError, ValueError):
+        update.message.reply_text('Usage: /r <1 2 ... 21>, but get %s' % (num))
+
+# quit miner
+def QuitMiner(bot, update, args):
+    # Filter users
+    if not isValidUser(update):
+        return
+
+    try:
+        # args[i] should contain the numbers of miners
+        for num in args:
+            num = int(num)
+            if (num < 1) or (num > 21):
+                update.message.reply_text('Invalid number. Need from 1 to 21!')
+                return
+            # Restart miner
+            res = s9api.quitMiner(num)
+            # Show result
+            update.message.reply_text(res)
+
+    except (IndexError, ValueError):
+        update.message.reply_text('Usage: /q <1 2 ... 21>, but get %s' % (num))
+
+# show Help
+def onHelp(bot, update):
+    # Filter users
+    if not isValidUser(update):
+        return
+
+    update.message.reply_text('\n'.join(['/r[estart] <num>', '/q[uit] <num>']))
 
 # show buttons
 def onNext(bot, update):

@@ -34,7 +34,7 @@ def getIP(num):
 def getURL(num):
     return 'http://' + getIP(num) + '/cgi-bin/minerStatus.cgi'
 
-# Get dict of main values
+# Get dict of status values
 def getMinerStatus(num):
     # init miner
     miner = CgminerAPI(host=getIP(num))
@@ -52,24 +52,61 @@ def getMinerStatus(num):
 #   resultDict['fan2'   ] = statDict['STATS'][1]['fan6'   ]
     return resultDict
 
+# Get dict of status values
+def getMinerOptions(num):
+    # init miner
+    miner = CgminerAPI(host=getIP(num))
+    # get stat dict
+    poolDict = dict(miner.pools())
+    # init result dict
+    resultDict = {}
+    # fill result dict
+    resultDict['pool'] = str(poolDict['POOLS'][0]['URL'] ).split('.')[1] # xxx.f2pool.xxx
+    resultDict['name'] = str(poolDict['POOLS'][0]['User']).split('.')[0] # nitva.xx
+    return resultDict
+
 # Get dict of main values
 def getMinerStatus2Str(num):
-    d = getMinerStatus(num)
+    try:
+        d = getMinerStatus(num)
+    except Exception:
+        num2Str = addZeroLeft(str(num), 2)
+        return '#%s: отключен' % (num2Str)
+    else:
+        num2Str = addZeroLeft(str(num), 2)
+        minTemp = min(d['temp1'], d['temp2'], d['temp3'])
+        maxTemp = max(d['temp1'], d['temp2'], d['temp3'])
+        wrkTime = displayTime(d['elapsed'])
 
-    num2Str = addZeroLeft(str(num), 2)
-    minTemp = min(d['temp1'], d['temp2'], d['temp3'])
-    maxTemp = max(d['temp1'], d['temp2'], d['temp3'])
-    wrkTime = displayTime(d['elapsed'])
-
-            #01: 13651 Ghs | 74-77 | 3360-4800 | 2d8h5m36s
-#   return '#%s: %.f Ghs | %d-%d-%d | %d-%d | %s' % (addZeroLeft(str(num), 2), d['ghs'], d['temp1'], d['temp2'], d['temp3'], d['fan1'], d['fan2'], displayTime(d['elapsed']))
-    return '#%s: %.f Ghs | %d-%d | %s' % (num2Str, d['ghs'], minTemp, maxTemp, wrkTime)
+                #01: 13651 Ghs | 74-77 | 3360-4800 | 2d8h5m36s
+    #   return '#%s: %.f Ghs | %d-%d-%d | %d-%d | %s' % (addZeroLeft(str(num), 2), d['ghs'], d['temp1'], d['temp2'], d['temp3'], d['fan1'], d['fan2'], displayTime(d['elapsed']))
+        return '#%s: %.f Ghs | %d-%d | %s' % (num2Str, d['ghs'], minTemp, maxTemp, wrkTime)
 
 def quitMiner(num):
-    return
+    try:
+        # init miner
+        miner = CgminerAPI(host=getIP(num))
+        # quit miner
+        miner.quit()
+    except Exception:
+        return 'Quit error!'
+    else:
+        return 'Quit ok!'
 
 def restartMiner(num):
-    return
+    # init miner
+    miner = CgminerAPI(host=getIP(num))
+    # restart miner
+    res = dict(miner.restart())
+    # get command status
+    status = res['STATUS']
+    # analize
+    if status == 'RESTART':
+        return 'Restart ok'
+    elif 'Msg' in status[0]:
+        return str(status[0]['Msg']) # whats wrong
+    elif 'description' in status[0]:
+        return str(status[0]['description']) # whats wrong
 
 # Get whole status text of all miners
 def getAboutMiners():
