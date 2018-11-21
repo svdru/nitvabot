@@ -8,5 +8,5 @@ def GetSecondsAfter(past):
         now = datetime.datetime.now()
         delta = now - past
         return delta.total_seconds()
-    elif:
+    else:
         return True

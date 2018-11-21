@@ -6,8 +6,14 @@ import socket
 import s9api
 import config
 import tools
-from cgminer import CgminerAPI
+import logging
 
+# Enable logging
+logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO, filename = __name__ + '.log')
+# Setup individual logger for this module
+logger = logging.getLogger(__name__)
+
+# define class for miner manage
 class S9Manager(object):
     """ S9 test and manage wrapper. """
 
@@ -16,103 +22,120 @@ class S9Manager(object):
         # miner info
         self.info = {}
         # current state
-        self.state = 'none'
+        self.state = ''
+        # current check step
+        self.step = ''
         # dict of check results
-        self.test = {}
+        self.test = {} # not used
         # last error time
         self.errorTime = 0 # import datetime. now = datetime.datetime.now().
-
-    def __getattr__(self, attr):
-        """ Allow us to make command calling methods.
-        >>> miner = S9Manager()
-        >>> miner.TestAttrs()
-        """
-
-        def out(arg=None):
-            return self.command(attr, arg)
-
-        return out
 
     def Check(self):
         """ Check miner and make needed action """
 
-        def Fix(testresult):
-            # remember test result of step
-            self.test[self.step] = testresult
-            return testresult
+        # remember test result of step
+        def Fix(testFunc):
+            res = testFunc()
+            self.test[self.step] = res
+            return res
 
         def TestExist():
             self.step = 'TestExist'
             try:
                 socket.gethostbyaddr(s9api.getIP(self.s9num))
                 return True
-            except socket.gaierror:
+            except socket.herror:
                 return False
-
-        def TestHashrate():
-            self.step = 'TestHashrate'
-            try:
-                # get miner status to dict
-                self.info = s9api.getMinerStatus(self.s9num)
-                # add miner options to dict
-                self.info.update(s9api.getMinerOptions(self.s9num))
-                # check GHs
-                return self.info['ghs'] > 13000
-            except Exception:
-                return False
-
-        def TestOptions():
-            self.step = 'TestOptions'
-            return (self.info['pool'] == config.POOL) and (self.info['name'] == config.WORKER)
 
         def TestInternet():
             self.step = 'TestInternet'
             try:
                 socket.gethostbyaddr('www.ya.ru')
                 return True
-            except socket.gaierror:
+            except socket.herror:
                 return False
 
+        def TestOptions():
+            self.step = 'TestOptions'
+            try:
+                # add miner options to dict
+                self.info.update(s9api.getMinerOptions(self.s9num))
+                # check options
+                return (self.info['pool'] == config.POOL) and (self.info['name'] == config.WORKER)
+            except Exception:
+                return False
+
+        def TestHashrate():
+            self.step = 'TestHashrate'
+            try:
+                # add miner status to dict
+                self.info.update(s9api.getMinerStatus(self.s9num))
+                # check GHs
+                return self.info['ghs'] > 13000
+            except Exception:
+                return False
+
+        ### check LOGIC ###
         if self.IsValid():
             if Fix(TestExist):
-                if Fix(TestHashrate):
+                if Fix(TestInternet):
                     if Fix(TestOptions):
-                        if Fix(TestInternet):
-                            return True
-                        elif: Quit
-                    elif: Quit
-                elif: Restart
-            elif: return False
-        elif: return False
+                        if Fix(TestHashrate):
+                            return True # all ok
+                        else:
+                            self.Restart # or start after pause
+                    else:
+                        self.Quit # bad options, need human
+                else:
+                    self.Pause  # temporary quit because no internet
+            else:
+                return False # no miner by IP
+        else:
+            return False # already quited or wait for delay before check
 
+    # выключение
     def Quit(self):
         try:
             if s9api.QuitMiner(self.s9num):
                 self.Validate('quited')
             else:
-                self.Invalidate # mark as invalid for time delay
+                self.Invalidate('Quit') # mark as invalid for time delay
         except Exception:
-            self.Invalidate # mark as invalid for time delay
+            self.Invalidate('Quit') # mark as invalid for time delay
+
+    # временное выключение
+    def Pause(self):
+        try:
+            if s9api.QuitMiner(self.s9num):
+                self.Validate('paused')
+            else:
+                self.Invalidate('Pause')  # mark as invalid for time delay
+        except Exception:
+            self.Invalidate('Pause')  # mark as invalid for time delay
 
     def Restart(self):
         try:
             if s9api.RestartMiner(self.s9num):
                 self.Validate('restarted')
             else:
-                self.Invalidate # mark as invalid for time delay
+                self.Invalidate('Restart') # mark as invalid for time delay
         except Exception:
-            self.Invalidate # mark as invalid for time delay
+            self.Invalidate('Restart') # mark as invalid for time delay
 
-    def Invalidate(self):
+    # Action fail
+    def Invalidate(self, action):
         self.state = 'invalid'
         self.errorTime = tools.Now
+        logger.warning('ASIC #%d %s failed after %s', self.s9num, action, self.step)
 
+    # Action succesfull
     def Validate(self, state):
         self.state = state
         self.stateTime = tools.Now
+        logger.warning('ASIC #%d succesfull %s after %s', self.s9num, state, self.step)
 
     def IsValid(self):
-        if (self.state == 'restarted'):
+        if (self.state in ['restarted', 'paused']):
             return tools.GetSecondsAfter(self.stateTime) > 300
         elif (self.state == 'quited'):
             return False
@@ -120,3 +143,5 @@ class S9Manager(object):
             return (self.errorTime == 0) or (tools.GetSecondsAfter(self.errorTime) > 300)
 
 s9 = S9Manager(1)
+print(s9.Check())
+print(s9.step)
