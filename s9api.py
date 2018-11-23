@@ -2,7 +2,7 @@
 # https://github.com/ckolivas/cgminer/blob/master/API-README
 
 # S9 API logic pycgminer
-import math
+import requests
 from cgminer import CgminerAPI
 
 def addZeroLeft(str, len):
@@ -33,6 +33,14 @@ def getIP(num):
 
 def getURL(num):
     return 'http://' + getIP(num) + '/cgi-bin/minerStatus.cgi'
+
+# Check exist miner via http request
+def IsMinerExist(num):
+    url = 'http://' + getIP(num)
+    try:
+        return requests.get(url).status_code > 0
+    except:
+        return False
 
 # Get dict of status values
 def getMinerStatus(num):
