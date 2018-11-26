@@ -14,9 +14,9 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
 logger = logging.getLogger()
 
 # Setup max failed quit/restart attempts
-MAX_ATTEMPT = 5
+MAX_ATTEMPT = 5  # type: int
 # Setup delay
-DELAY_SECONDS = 300
+DELAY_SECONDS = 600
 
 # define class for miner manage
 class S9Manager(object):
@@ -86,11 +86,11 @@ class S9Manager(object):
                         if Fix(TestOptions):
                             return True # all ok
                         else:
-                            self.Quit  # bad options, quit and wait for human
+                            self.Stop()  # bad options, quit and wait for human
                     else:
-                        self.Restart  # or start after pause
+                        self.Restart()  # or start after pause
                 else:
-                    self.Pause  # temporary quit because no internet
+                    self.Pause()  # temporary quit because no internet
             else:
                 logger.warning('ASIC #%d not found', self.num)
                 return False # no miner by IP
@@ -98,65 +98,45 @@ class S9Manager(object):
             return False # already quited or wait for delay before check
 
     # выключение
-    def Quit(self):
-        if self.state == 'quit':
-            return # already quited
-
-        try:
-            result = True #s9api.QuitMiner(self.num)
-        except Exception:
-            result = False
-
-        self.Process(result, 'quit')
+    def Stop(self):
+        if self.state != 'stop':
+            self.Process(s9api.stopMiner(self.num), 'stop')
 
     # временное выключение
     def Pause(self):
-        if self.state == 'pause':
-            return # already paused
-
-        try:
-            result = True #s9api.QuitMiner(self.num)
-        except Exception:
-            result = False
-
-        self.Process(result, 'pause')
+        if self.state != 'pause':
+            self.Process(s9api.stopMiner(self.num), 'pause')
 
     def Restart(self):
         if self.errorCount > MAX_ATTEMPT:
-            self.Quit
-
-        try:
-            result = True #s9api.RestartMiner(self.num)
-        except Exception:
-            result = False
-
-        self.Process(result, 'restart')
-
+            self.Stop() # to many times to try restart
+        else:
+            self.Process(s9api.restartMiner(self.num), 'restart')
 
     # Action result processing
     def Process(self, result, action):
         # Action succesfull
-        if result:
+        if result['STATUS']:
             self.state = action
             self.errorTime = 0
             self.errorCount = 0
-            logger.warning('ASIC #%d %s succesfull after %s', self.num, action, self.step)
+            logger.info('ASIC #%d %s succesfull after %s', self.num, action, self.step)
         # Action fail
         else:
             self.state = 'invalid'
-            self.errorTime = tools.Now # for time delay before next check
+            self.errorTime = tools.Now() # for time delay before next check
             self.errorCount += 1
-            logger.warning('ASIC #%d %s failed after %s', self.num, action, self.step)
+            logger.warning('ASIC #%d %s failed after %s (%s)', self.num, action, self.step, result['ERROR'])
 
     # Indicate - is it possible to check
     def IsValid(self):
                # not quited early            existed or not checked yet - self.test.get('TestExist', True) and \
-        return self.state != 'quit' and \
-               (self.errorTime == 0 or tools.GetSecondsAfter(self.errorTime) > DELAY_SECONDS) # passed 5 min after last attempt
+        return self.state != 'stop' and \
+               (self.errorTime == 0 or tools.GetSecondsAfter(self.errorTime) > DELAY_SECONDS) # passed 10 min after last attempt
 
 # execute module
 if __name__ == '__main__':
-    print('Запущен бесконечный цикл контроля майнеров с интервалом в 5 минут')
+    print('Запущен бесконечный цикл контроля майнеров с интервалом в %d минут' % (DELAY_SECONDS/60))
     s9list = []
     for i in range(1, 22):
         s9list.append(S9Manager(i))

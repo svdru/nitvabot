@@ -1,2 +1,3 @@
 PySocks
 python-telegram-bot
+paramiko

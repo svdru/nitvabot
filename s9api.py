@@ -4,29 +4,9 @@
 # S9 API logic pycgminer
 import requests
 from cgminer import CgminerAPI
-
-def addZeroLeft(str, len):
-    return str.rjust(len).replace(' ', '0')
-
-#    ('н', 604800),  # 60 * 60 * 24 * 7
-intervals = (
-    ('д', 86400),    # 60 * 60 * 24
-    ('ч', 3600),    # 60 * 60
-    ('м', 60),
-    ('с', 1),
-    )
-
-def displayTime(seconds, granularity=2):
-    result = []
-
-    for name, count in intervals:
-        value = seconds // count
-        if value:
-            seconds -= value * count
-            if value == 1:
-                name = name.rstrip('s')
-            result.append("{}{}".format(value, name))
-    return ''.join(result[:granularity])
+from bmminer import BmminerSSH
+from tools import displayTime, addZeroLeft
+import config
 
 def getIP(num):
     return '192.168.10.2{}'.format(addZeroLeft(str(num), 2))
@@ -79,7 +59,10 @@ def getMinerStatus2Str(num):
         d = getMinerStatus(num)
     except Exception:
         num2Str = addZeroLeft(str(num), 2)
-        return '#%s: отключен' % (num2Str)
+        if IsMinerExist(num):
+            return '#%s: остановлен' % (num2Str)
+        else:
+            return '#%s: не доступен' % (num2Str)
     else:
         num2Str = addZeroLeft(str(num), 2)
         minTemp = min(d['temp1'], d['temp2'], d['temp3'])
@@ -90,31 +73,43 @@ def getMinerStatus2Str(num):
     #   return '#%s: %.f Ghs | %d-%d-%d | %d-%d | %s' % (addZeroLeft(str(num), 2), d['ghs'], d['temp1'], d['temp2'], d['temp3'], d['fan1'], d['fan2'], displayTime(d['elapsed']))
         return '#%s: %.f Ghs | %d-%d | %s' % (num2Str, d['ghs'], minTemp, maxTemp, wrkTime)
 
-def quitMiner(num):
-    try:
-        # init miner
-        miner = CgminerAPI(host=getIP(num))
-        # quit miner
-        miner.quit()
-    except Exception:
-        return 'Quit error!'
-    else:
-        return 'Quit ok!'
+def stopMiner(num):
+    # init miner
+    #miner = CgminerAPI(host=getIP(num))
+    # quit miner via API
+    #res = dict(miner.quit())
+    # get command status
+    #status = res['STATUS']
+    # analize
+    #if status == 'BYE':
+    #    return 'Restart ok'
+    #else:
+    #    return 'Restart fail'
+
+    # init miner
+    miner = BmminerSSH(host=getIP(num))
+    # stop miner via SSH
+    return dict(miner.stop())
 
 def restartMiner(num):
     # init miner
-    miner = CgminerAPI(host=getIP(num))
-    # restart miner
-    res = dict(miner.restart())
+    #miner = CgminerAPI(host=getIP(num))
+    # restart miner via API
+    #res = dict(miner.restart())
     # get command status
-    status = res['STATUS']
+    #status = res['STATUS']
     # analize
-    if status == 'RESTART':
-        return 'Restart ok'
-    elif 'Msg' in status[0]:
-        return str(status[0]['Msg']) # whats wrong
-    elif 'description' in status[0]:
-        return str(status[0]['description']) # whats wrong
+    #if status == 'RESTART':
+    #    return 'Restart ok'
+    #elif 'Msg' in status[0]:
+    #    return str(status[0]['Msg']) # whats wrong
+    #elif 'description' in status[0]:
+    #    return str(status[0]['description']) # whats wrong
+
+    # init miner
+    miner = BmminerSSH(host=getIP(num))
+    # restart miner via SSH
+    return dict(miner.restart())
 
 # Get whole status text of all miners
 def getAboutMiners():
@@ -124,7 +119,7 @@ def getAboutMiners():
     return '\n'.join(result)
 
 
-# Helpers
+# OLD helpers
 def get_summary(num):
     miner = CgminerAPI(host=getIP(num))
     output = miner.summary()
@@ -151,4 +146,4 @@ def get_stats(ip):
 
 
 if __name__ == '__main__':
-    print(getAllMinerStatuses())
+    print(getAboutMiners())
