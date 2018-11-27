@@ -6,21 +6,26 @@ import requests
 from cgminer import CgminerAPI
 from bmminer import BmminerSSH
 from tools import displayTime, addZeroLeft
-import config
 
+
+# get IP by ASIC num
 def getIP(num):
     return '192.168.10.2{}'.format(addZeroLeft(str(num), 2))
 
+
+# get URL by ASIC num
 def getURL(num):
     return 'http://' + getIP(num) + '/cgi-bin/minerStatus.cgi'
 
+
 # Check exist miner via http request
-def IsMinerExist(num):
+def isMinerExist(num):
     url = 'http://' + getIP(num)
     try:
         return requests.get(url).status_code > 0
     except:
         return False
+
 
 # Get dict of status values
 def getMinerStatus(num):
@@ -59,10 +64,10 @@ def getMinerStatus2Str(num):
         d = getMinerStatus(num)
     except Exception:
         num2Str = addZeroLeft(str(num), 2)
-        if IsMinerExist(num):
-            return '#%s: остановлен' % (num2Str)
+        if isMinerExist(num):
+            return '#%s: **остановлен**' % (num2Str)
         else:
-            return '#%s: не доступен' % (num2Str)
+            return '#%s: **не доступен**' % (num2Str)
     else:
         num2Str = addZeroLeft(str(num), 2)
         minTemp = min(d['temp1'], d['temp2'], d['temp3'])
@@ -73,6 +78,8 @@ def getMinerStatus2Str(num):
     #   return '#%s: %.f Ghs | %d-%d-%d | %d-%d | %s' % (addZeroLeft(str(num), 2), d['ghs'], d['temp1'], d['temp2'], d['temp3'], d['fan1'], d['fan2'], displayTime(d['elapsed']))
         return '#%s: %.f Ghs | %d-%d | %s' % (num2Str, d['ghs'], minTemp, maxTemp, wrkTime)
 
+
+# Stop miner via SSH
 def stopMiner(num):
     # init miner
     #miner = CgminerAPI(host=getIP(num))
@@ -91,6 +98,8 @@ def stopMiner(num):
     # stop miner via SSH
     return dict(miner.stop())
 
+
+# restart miner via SSH
 def restartMiner(num):
     # init miner
     #miner = CgminerAPI(host=getIP(num))
@@ -110,6 +119,7 @@ def restartMiner(num):
     miner = BmminerSSH(host=getIP(num))
     # restart miner via SSH
     return dict(miner.restart())
+
 
 # Get whole status text of all miners
 def getAboutMiners():

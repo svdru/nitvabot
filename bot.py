@@ -1,19 +1,14 @@
-QuitMiner
 # -*- coding: utf-8 -*-
 
 # Bots logic
 
-"""Simple Bot to send timed Telegram messages.
+"""Simple Bot to answer for Telegram messages.
 # This program is dedicated to the public domain under the CC0 license.
 This Bot uses the Updater class to handle the bot and the JobQueue to send
 timed messages.
 First, a few handler functions are defined. Then, those functions are passed to
 the Dispatcher and registered at their respective places.
 Then, the bot is started and runs until we press Ctrl-C on the command line.
-Usage:
-Basic Alarm Bot example, sends a message after a set time.
-Press Ctrl-C on the command line or send a signal to the process to stop the
-bot.
 """
 
 from telegram.ext import Updater, CommandHandler, CallbackQueryHandler
@@ -52,8 +47,14 @@ def main():
     dp.add_handler(CommandHandler("start", onStart))
     dp.add_handler(CommandHandler("next", onNext))
     dp.add_handler(CommandHandler("help", onHelp))
-    dp.add_handler(CommandHandler("r", RestartMiner, pass_args=True))
-    dp.add_handler(CommandHandler("q", QuitMiner, pass_args=True))
+    dp.add_handler(CommandHandler("r", restartMiner, pass_args=True))
+    dp.add_handler(CommandHandler("q", quitMiner, pass_args=True))
+    # alternative runs of info (for addition to buttons)
+    dp.add_handler(CommandHandler("info", onInfo))
+    dp.add_handler(CommandHandler("stat", onInfo))
+    dp.add_handler(CommandHandler("📋 Состояние", onInfo))
+    dp.add_handler(CommandHandler("⚖ Статистика", onInfo))
+
     # Register callback handler for buttons
     dp.add_handler(CallbackQueryHandler(onButtonClick))
 
@@ -83,8 +84,17 @@ def onStart(bot, update):
     # Hello
     update.message.reply_text(START_COMMAND_MESSAGE)
 
+def onInfo(bot, update):
+    # Filter users
+    if not isValidUser(update):
+        update.message.reply_text(NOT_VALID_USR_MESSAGE)
+        return
+
+    # stat
+    update.message.reply_text(s9api.getAboutMiners() + "\n\n" + NEXT)
+
 # restart miner
-def RestartMiner(bot, update, args):
+def restartMiner(bot, update, args):
     # Filter users
     if not isValidUser(update):
         return
@@ -99,13 +109,13 @@ def RestartMiner(bot, update, args):
             # Restart miner
             res = s9api.restartMiner(num)
             # Show result
-            update.message.reply_text(res)
+            update.message.reply_text(res['ERROR'])
 
     except (IndexError, ValueError):
         update.message.reply_text('Usage: /r <1 2 ... 21>, but get %s' % (num))
 
 # quit miner
-def QuitMiner(bot, update, args):
+def quitMiner(bot, update, args):
     # Filter users
     if not isValidUser(update):
         return
@@ -118,9 +128,9 @@ def QuitMiner(bot, update, args):
                 update.message.reply_text('Invalid number. Need from 1 to 21!')
                 return
             # Restart miner
-            res = s9api.quitMiner(num)
+            res = s9api.stopMiner(num)
             # Show result
-            update.message.reply_text(res)
+            update.message.reply_text(res['ERROR'])
 
     except (IndexError, ValueError):
         update.message.reply_text('Usage: /q <1 2 ... 21>, but get %s' % (num))
@@ -131,7 +141,7 @@ def onHelp(bot, update):
     if not isValidUser(update):
         return
 
-    update.message.reply_text('\n'.join(['/r[estart] <num>', '/q[uit] <num>']))
+    update.message.reply_text('\n'.join(['/r[estart] <1 2 ... 21>', '/q[uit] <1 2 ... 21>', QUESTION_INFO, QUESTION_STAT]))
 
 # show buttons
 def onNext(bot, update):

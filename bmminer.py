@@ -7,6 +7,7 @@
 
 import paramiko
 
+
 class BmminerSSH(object):
     """ Bmminer SSH command wrapper. """
 
@@ -29,7 +30,7 @@ class BmminerSSH(object):
         except Exception as e:
             return dict({'STATUS': False, 'ERROR': e})
         else:
-            return dict({'STATUS': res == '', 'ERROR': res})
+            return dict({'STATUS': res == '', 'ERROR': tools.nvl(res, 'OK')})
         finally:
             ssh.close()
 
