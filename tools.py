@@ -44,8 +44,8 @@ def addZeroLeft(str, len):
     return str.rjust(len).replace(' ', '0')
 
 
-def nvl(str, ifEmpty):
-    if str == '':
-        return ifEmpty
+def nvl(text, returnIfEmpty):
+    if text == '':
+        return returnIfEmpty
     else:
-        return str
+        return text

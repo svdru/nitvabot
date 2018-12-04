@@ -6,6 +6,7 @@
 # root\@antMiner:~# /etc/init.d/bmminer.sh stop/start/restart/force-reset
 
 import paramiko
+from tools import nvl
 
 
 class BmminerSSH(object):
@@ -30,7 +31,7 @@ class BmminerSSH(object):
         except Exception as e:
             return dict({'STATUS': False, 'ERROR': e})
         else:
-            return dict({'STATUS': res == '', 'ERROR': tools.nvl(res, 'OK')})
+            return dict({'STATUS': res == '', 'ERROR': nvl(res, 'OK')})
         finally:
             ssh.close()
 

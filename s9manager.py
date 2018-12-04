@@ -2,8 +2,8 @@
 
 # S9 test and manage tool
 
-import socket
 import s9api
+import router
 import config
 import tools
 import logging
@@ -45,11 +45,7 @@ class S9Manager(object):
 
         def testInternet():
             self.step = 'TestInternet'
-            try:
-                socket.gethostbyname('ya.ru')
-                return True
-            except socket.gaierror:
-                return False
+            return router.testInternet()
 
         def testOptions():
             self.step = 'TestOptions'
@@ -136,6 +132,9 @@ if __name__ == '__main__':
         s9list.append(S9Manager(i))
 
     while True:
+        # check router
+        if router.rebootIfNoInternet(logger):
+            tools.sleep(60)  # wait 1 min for reboot
         # cycled check
         for s9 in s9list:
             s9.check()

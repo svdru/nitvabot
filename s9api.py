@@ -62,12 +62,13 @@ def getMinerOptions(num):
 def getMinerStatus2Str(num):
     try:
         d = getMinerStatus(num)
-    except Exception:
+    except:
         num2Str = addZeroLeft(str(num), 2)
-        if isMinerExist(num):
-            return '#%s: **остановлен**' % (num2Str)
-        else:
-            return '#%s: **не доступен**' % (num2Str)
+        return '#%s: не работает' % (num2Str)
+        #if isMinerExist(num):
+        #    return '#%s: остановлен' % (num2Str)
+        #else:
+        #    return '#%s: не доступен' % (num2Str)
     else:
         num2Str = addZeroLeft(str(num), 2)
         minTemp = min(d['temp1'], d['temp2'], d['temp3'])
